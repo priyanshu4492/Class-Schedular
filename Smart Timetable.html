@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Smart Timetable</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+:root{--bg:#e4e8ef;--sd:#c3c9d6;--sl:#ffffff;--tx:#2f3547;--mu:#7b839a;--ac:#4f5bd5;--acs:#e5e7fb;--ok:#2f9e6e;--warn:#d9822b;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#22252e;--sd:#181a20;--sl:#2c303b;--tx:#e6e8f0;--mu:#8f96ab;--ac:#8b95ff;--acs:#2f3350}}
+:root[data-theme="dark"]{--bg:#22252e;--sd:#181a20;--sl:#2c303b;--tx:#e6e8f0;--mu:#8f96ab;--ac:#8b95ff;--acs:#2f3350}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:Manrope,system-ui,sans-serif;min-height:100vh}
+.app{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+nav{padding:24px 18px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:10px}
+.logo{font-weight:800;font-size:20px;padding:6px 10px 18px}.logo b{color:var(--ac)}
+nav button{all:unset;cursor:pointer;display:flex;gap:12px;align-items:center;padding:13px 16px;border-radius:14px;font-weight:600;color:var(--mu);transition:.2s}
+nav button:hover{color:var(--tx);box-shadow:5px 5px 10px var(--sd),-5px -5px 10px var(--sl)}
+nav button.on{color:var(--ac);box-shadow:inset 4px 4px 8px var(--sd),inset -4px -4px 8px var(--sl)}
+main{padding:28px clamp(16px,3vw,40px) 40px;max-width:1000px;width:100%}
+h1{font-size:28px;margin:0 0 4px}h2{font-size:18px;margin:28px 0 14px}h3{margin:0;font-size:17px}
+p{margin:0}.mu{color:var(--mu)}
+.card{background:var(--bg);border-radius:22px;padding:20px;box-shadow:8px 8px 16px var(--sd),-8px -8px 16px var(--sl)}
+.inset{box-shadow:inset 5px 5px 10px var(--sd),inset -5px -5px 10px var(--sl)}
+.grid{display:grid;gap:22px}.g2{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.cls{display:flex;flex-direction:column;gap:8px;border-left:0}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.time{font-weight:700;color:var(--ac)}.meta{font-size:14px;color:var(--mu)}
+.pill{font-size:11px;font-weight:800;padding:5px 11px;border-radius:20px;box-shadow:inset 2px 2px 5px var(--sd),inset -2px -2px 5px var(--sl)}
+.pill.live{color:var(--ok)}.pill.up{color:var(--ac)}.pill.done{color:var(--mu)}
+.cls.done{opacity:.6}.cls.live{outline:2px solid var(--ok);outline-offset:-2px}
+.hero{padding:28px}.hero h1{font-size:clamp(26px,5vw,38px);margin:8px 0}
+.cd{font-size:clamp(30px,7vw,46px);font-weight:800;color:var(--ac);letter-spacing:2px;font-variant-numeric:tabular-nums}
+.btn{all:unset;cursor:pointer;padding:12px 22px;border-radius:14px;font-weight:700;color:var(--ac);box-shadow:5px 5px 10px var(--sd),-5px -5px 10px var(--sl);transition:.15s;display:inline-block}
+.btn:hover{transform:translateY(-1px)}.btn:active{box-shadow:inset 3px 3px 6px var(--sd),inset -3px -3px 6px var(--sl);transform:none}
+.btn.pri{background:var(--ac);color:#fff}.btn.pri:active{filter:brightness(.9)}
+input,select{font:inherit;color:var(--tx);background:var(--bg);border:0;outline:0;border-radius:12px;padding:10px 12px;box-shadow:inset 3px 3px 6px var(--sd),inset -3px -3px 6px var(--sl);width:100%}
+input:focus,select:focus,.btn:focus-visible,nav button:focus-visible{outline:2px solid var(--ac)}
+input.warn{outline:2px solid var(--warn)}
+.search{font-size:16px;padding:16px 20px;border-radius:18px}
+.tabs{display:flex;gap:10px;overflow-x:auto;padding:8px 4px 14px}
+.tabs .btn{padding:10px 16px;white-space:nowrap}.tabs .btn.on{box-shadow:inset 3px 3px 6px var(--sd),inset -3px -3px 6px var(--sl)}
+.wk{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:16px}
+.wk .card{cursor:pointer;padding:16px;transition:.2s}.wk .card:hover{transform:translateY(-2px)}.wk .card.on{box-shadow:inset 5px 5px 10px var(--sd),inset -5px -5px 10px var(--sl)}
+.wk b{font-size:26px;color:var(--ac);display:block}
+.drop{border-radius:24px;padding:48px 20px;text-align:center;cursor:pointer;transition:.2s}
+.drop.over{outline:2px dashed var(--ac)}.drop .big{font-size:40px}
+.msg{padding:14px 16px;border-radius:14px;margin-top:16px;font-weight:600}.msg.err{color:var(--warn)}.msg.ok{color:var(--ok)}
+.tw{overflow-x:auto}table{border-collapse:separate;border-spacing:0 8px;width:100%;min-width:720px}
+td,th{padding:3px;text-align:left;font-size:13px;color:var(--mu)}td:first-child{width:130px}
+.sw{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px}
+pre{white-space:pre-wrap;font-size:12px;color:var(--mu);overflow-x:auto;margin:12px 0 0}
+.empty{text-align:center;padding:36px 20px}
+@media (max-width:800px){
+.app{display:block}
+nav{position:fixed;bottom:0;left:0;right:0;top:auto;height:auto;flex-direction:row;justify-content:space-around;padding:8px 6px calc(8px + env(safe-area-inset-bottom,0px));background:var(--bg);z-index:9;box-shadow:0 -6px 14px var(--sd);gap:0}
+.logo{display:none}nav button{flex-direction:column;gap:2px;padding:8px 6px;font-size:10px;border-radius:12px;align-items:center}
+main{padding-bottom:110px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app"><nav id="nav"></nav><main id="main"></main></div>
+<script>
+const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const NAV=[['dash','Dashboard','🏠'],['today','Today','📅'],['week','Weekly','🗓️'],['search','Search','🔍'],['upload','Upload PDF','📄'],['set','Settings','⚙️']];
+let S={rows:[],fmt24:false,view:'dash',day:null,draft:null,msg:null};
+try{const d=JSON.parse(localStorage.getItem('st_v1')||'null');if(d){S.rows=d.rows||[];S.fmt24=!!d.fmt24}}catch(e){}
+const save=()=>{try{localStorage.setItem('st_v1',JSON.stringify({rows:S.rows,fmt24:S.fmt24}))}catch(e){}};
+const pad=n=>String(n).padStart(2,'0');
+const tm=t=>{const[a,b]=t.split(':').map(Number);return a*60+b};
+const f=t=>{if(S.fmt24)return t;const[h,m]=t.split(':').map(Number);return(h%12||12)+':'+pad(m)+' '+(h<12?'AM':'PM')};
+const dur=(a,b)=>{const d=tm(b)-tm(a);if(d<=0)return'—';if(d<60)return d+' min';const h=Math.floor(d/60),m=d%60;return h+(h>1?' hours':' hour')+(m?' '+m+' min':'')};
+const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const byDay=d=>S.rows.filter(r=>r.day===d).sort((a,b)=>tm(a.start)-tm(b.start));
+const nowI=()=>{const d=new Date();return{i:(d.getDay()+6)%7,sec:d.getHours()*3600+d.getMinutes()*60+d.getSeconds(),d}};
+const status=(c,sec)=>sec<tm(c.start)*60?'up':sec<tm(c.end)*60?'live':'done';
+const LBL={live:'LIVE NOW',up:'UPCOMING',done:'COMPLETED'};
+const hms=s=>{s=Math.max(0,s);return pad(Math.floor(s/3600))+' : '+pad(Math.floor(s%3600/60))+' : '+pad(s%60)};
+const card=(c,st,showDay)=>`<div class="card cls ${st||''}"><div class="row"><h3>${esc(c.subject)}</h3>${st?`<span class="pill ${st}">${LBL[st]}</span>`:showDay?`<span class="pill up">${c.day}</span>`:''}</div><p class="time">${f(c.start)} → ${f(c.end)}</p><p class="meta">👤 ${esc(c.teacher)||'—'} &nbsp; 📍 ${esc(c.room)||'—'} &nbsp; ⏱ ${dur(c.start,c.end)}</p></div>`;
+
+function nextClass(){
+  const{i,sec}=nowI();
+  for(let k=0;k<7;k++){
+    const di=(i+k)%7;if(di>5)continue;
+    const list=byDay(DAYS[di]);
+    const c=k===0?list.find(x=>sec<tm(x.start)*60):list[0];
+    if(c)return{c,k,secs:k*86400+tm(c.start)*60-sec,day:DAYS[di]};
+  }return null;
+}
+const emptyBox=`<div class="card empty"><h3>No timetable yet</h3><p class="mu" style="margin:8px 0 18px">Upload your timetable PDF once and it stays here.</p><button class="btn pri" onclick="go('upload')">Upload PDF</button> <button class="btn" onclick="sample()">Try sample data</button></div>`;
+
+function todayList(){
+  const{i,sec}=nowI();const l=i<6?byDay(DAYS[i]):[];
+  return l.length?l.map(c=>card(c,status(c,sec))).join(''):`<div class="card empty mu">No classes today 🎉</div>`;
+}
+function weekSummary(){
+  return`<div class="wk">${DAYS.map(d=>`<div class="card ${S.day===d&&S.view==='week'?'on':''}" onclick="S.day='${d}';go('week')"><b>${byDay(d).length}</b><span class="mu">${d}</span></div>`).join('')}</div>`;
+}
+function heroHtml(){
+  const{i,sec}=nowI();const l=i<6?byDay(DAYS[i]):[];
+  const live=l.find(c=>status(c,sec)==='live');const n=nextClass();let h='';
+  if(live)h+=`<div class="card hero" style="margin-bottom:22px;outline:2px solid var(--ok);outline-offset:-2px"><span class="pill live">LIVE NOW</span><h1>${esc(live.subject)}</h1><p class="time">${f(live.start)} → ${f(live.end)}</p><p class="meta" style="margin-top:6px">👤 ${esc(live.teacher)||'—'} &nbsp; 📍 ${esc(live.room)||'—'}</p><p class="mu" style="margin-top:10px">Ends in <b id="cdlive">${hms(tm(live.end)*60-sec)}</b></p></div>`;
+  if(n){
+    const when=n.k===0?'':` — ${n.k===1&&(i+1)%7===DAYS.indexOf(n.day)?'Tomorrow':n.day}`;
+    h+=`<div class="card hero"><p class="mu" style="font-weight:700">${l.length&&!l.some(c=>status(c,sec)==='up')?'No more classes today 🎉 · Next class':'Next Class'}${when}</p><h1>${esc(n.c.subject)}</h1><p class="time">Starts ${f(n.c.start)} · Ends ${f(n.c.end)}</p><p class="meta" style="margin:6px 0 16px">👤 ${esc(n.c.teacher)||'—'} &nbsp; 📍 ${esc(n.c.room)||'—'}</p><p class="mu">Next class in</p><div class="cd" id="cdnext">${hms(n.secs)}</div></div>`;
+  }else if(!live)h+=`<div class="card hero"><h1>No more classes 🎉</h1><p class="mu">Nothing left on your timetable.</p></div>`;
+  return h;
+}
+const greet=()=>{const h=new Date().getHours();return(h<12?'Good Morning':h<17?'Good Afternoon':'Good Evening')+' 👋'};
+const dateStr=()=>new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'});
+
+const V={
+dash(){return`<h1>${greet()}</h1><p class="mu" style="margin-bottom:22px">${dateStr()}</p>${!S.rows.length?emptyBox:`${heroHtml()}<h2>Today's Schedule</h2><div class="grid">${todayList()}</div><h2>Weekly Summary</h2>${weekSummary()}`}`},
+today(){return`<h1>Today's Classes</h1><p class="mu" style="margin-bottom:22px">${dateStr()}</p>${S.rows.length?`<div class="grid">${todayList()}</div>`:emptyBox}`},
+week(){
+  if(!S.day){const i=nowI().i;S.day=DAYS[i>5?0:i]}
+  const l=byDay(S.day);
+  return`<h1>Weekly Timetable</h1><p class="mu" style="margin-bottom:18px">Pick a day to see its classes.</p>${weekSummary()}<h2>${S.day}</h2><div class="tabs">${DAYS.map(d=>`<button class="btn ${d===S.day?'on':''}" onclick="S.day='${d}';render()">${d.slice(0,3)}</button>`).join('')}</div><div class="grid">${l.length?l.map(c=>card(c)).join(''):'<div class="card empty mu">No classes on this day.</div>'}</div>`},
+search(){return`<h1>Search</h1><p class="mu" style="margin-bottom:18px">Subject, teacher, day, room or time.</p><input class="search" id="q" placeholder="Try “Monday”, “Prof. Sharma” or “Lab 2”" oninput="doSearch(this.value)" autofocus><div class="grid" id="res" style="margin-top:22px"></div>`},
+upload(){return`<h1>Upload PDF</h1><p class="mu" style="margin-bottom:18px">Upload once — we'll keep your timetable saved.</p>
+<div class="card inset drop" id="drop" onclick="$('#file').click()"><div class="big">📄</div><h3 style="margin-top:8px">Upload Your Timetable PDF</h3><p class="mu" style="margin-top:6px">Drag & drop your timetable here or browse files</p><input type="file" id="file" accept="application/pdf" hidden></div>
+${S.msg?`<div class="msg ${S.msg[0]}">${S.msg[1]}</div>`:''}${S.msg&&S.msg[0]==='err'&&S.raw?`<details class="card" style="margin-top:16px"><summary style="cursor:pointer;font-weight:700">See what we read from your PDF</summary><pre>${esc(S.raw.join('\n'))}</pre></details>`:''}${S.draft?draftHtml():''}`},
+set(){return`<h1>Settings</h1><div class="grid" style="margin-top:20px;max-width:520px"><div class="card row"><div><h3>24-hour time</h3><p class="meta">Show 14:00 instead of 2:00 PM</p></div><button class="btn" onclick="S.fmt24=!S.fmt24;save();render()">${S.fmt24?'On':'Off'}</button></div><div class="card row"><div><h3>Saved timetable</h3><p class="meta">${S.rows.length} classes stored on this device</p></div><button class="btn" onclick="if(confirm('Delete your saved timetable?')){S.rows=[];save();render()}">Clear</button></div></div>`}
+};
+const $=s=>document.querySelector(s);
+
+function doSearch(v){
+  const q=v.trim().toLowerCase();const r=$('#res');
+  if(!q){r.innerHTML='';return}
+  const m=S.rows.filter(c=>[c.day,c.subject,c.teacher,c.room,c.start,c.end,f(c.start),f(c.end)].join(' ').toLowerCase().includes(q))
+    .sort((a,b)=>DAYS.indexOf(a.day)-DAYS.indexOf(b.day)||tm(a.start)-tm(b.start));
+  r.innerHTML=m.length?m.map(c=>card(c,null,true)).join(''):'<div class="card empty mu">No matching classes found.</div>';
+}
+
+/* ---------- PDF extraction ---------- */
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+const T=/(\d{1,2})[:.](\d{2})\s*(am|pm)?\s*(?:-|–|—|to)\s*(\d{1,2})[:.](\d{2})\s*(am|pm)?/i;
+const TS=/(\d{1,2})[:.](\d{2})\s*(am|pm)?/gi;
+const DW='(Mon(?:day)?|Tue(?:s|sday)?|Wed(?:nesday)?|Thu(?:r|rs|rsday)?|Fri(?:day)?|Sat(?:urday)?)';
+const DR=new RegExp('\\b'+DW+'\\b\\.?','i'),DRG=new RegExp('\\b'+DW+'\\b\\.?','gi'),DX=new RegExp('^'+DW+'\\.?$','i');
+const DATE=/\b\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}\b|\b\d{4}-\d{2}-\d{2}\b/g;
+const TR=/((?:Prof|Dr|Mr|Mrs|Ms)\.?\s+[A-Z][\w.]*(?:\s[A-Z][\w.]*)?)/;
+const RR=/\b(?:Room|Lab|Block|Hall)\s*[\w-]+(?:\s*-\s*\d+)?|\b[A-Z]{1,3}-\d{2,3}[A-Z]?\b/i;
+const dayOf=s=>{const m=s.match(DR);return m?DAYS.find(d=>d.toLowerCase().startsWith(m[1].slice(0,3).toLowerCase())):null};
+function hm(h,m,ap){const raw=String(h);h=+h;if(+m>59||h>23)return null;if(ap){ap=ap.toLowerCase();if(ap==='pm'&&h<12)h+=12;if(ap==='am'&&h===12)h=0}else if(h<8&&raw.length<2)h+=12;return pad(h)+':'+m}
+const rng=t=>[hm(t[1],t[2],t[3]||(t[6]&&+t[1]<=+t[4]?t[6]:'')),hm(t[4],t[5],t[6])];
+const tp=m=>hm(m[1],m[2],m[3]);
+function mk(text,day,start,end){
+  if(!day||!start||!end)return null;
+  let rest=text.replace(DATE,' ');
+  const te=rest.match(TR);const teacher=te?te[1].trim():'';rest=rest.replace(TR,'|');
+  const ro=rest.match(RR);const room=ro?ro[0].trim():'';rest=rest.replace(RR,'|');
+  const p=rest.split('|').map(s=>s.replace(DRG,' ').replace(/[,;()]+/g,' ').replace(/\s+/g,' ').trim()).filter(s=>s&&!/^[\d\s.:\-–—]*$/.test(s));
+  const subject=p[0]||'';
+  if(!subject||/^(break|lunch|recess|free|nil|na|n\/a)$/i.test(subject))return null;
+  return{day,subject,teacher:teacher||p[1]||'',room:room||p[2]||'',start,end};
+}
+function gridParse(segs){
+  const isD=s=>DX.test(s.s.trim());
+  const isT=s=>T.test(s.s)&&s.s.replace(T,'').trim().length<2;
+  const tS=segs.filter(isT),dS=segs.filter(isD);
+  if(tS.length<2||dS.length<2)return[];
+  const sp=a=>Math.max(...a.map(s=>s.y))-Math.min(...a.map(s=>s.y));
+  if(Math.min(sp(tS),sp(dS))>8)return[];const A=sp(tS)<sp(dS);
+  const cols=A?tS:dS,rw=A?dS:tS,cx=s=>(s.x+s.xe)/2;
+  const hy=Math.max(...cols.map(s=>s.y)),minL=Math.min(...cols.map(s=>s.x));
+  const near=(a,f)=>a.reduce((b,c)=>f(c)<f(b)?c:b);
+  const cells=new Map();
+  segs.forEach(s=>{
+    if(isT(s)||isD(s)||s.y>=hy-3||cx(s)<minL-40)return;
+    const c=near(cols,k=>Math.abs(cx(k)-cx(s))),r=near(rw,k=>Math.abs(k.y-s.y));
+    const key=cols.indexOf(c)+'|'+rw.indexOf(r);
+    if(!cells.has(key))cells.set(key,[]);cells.get(key).push(s);
+  });
+  const out=[];
+  cells.forEach((v,key)=>{
+    const[ci,ri]=key.split('|').map(Number);
+    const t=A?cols[ci]:rw[ri],d=A?rw[ri]:cols[ci];
+    const m=t.s.match(T);if(!m)return;const[s,e]=rng(m);
+    v.sort((a,b)=>b.y-a.y||a.x-b.x);
+    const r=mk(v.map(x=>x.s).join(' | '),dayOf(d.s),s,e);if(r)out.push(r);
+  });
+  return out;
+}
+function parse(lines){
+  const out=[];let day=null;
+  lines.forEach(line=>{
+    day=dayOf(line)||day;
+    const cells=line.split(' | ');const tc=cells.filter(c=>T.test(c));
+    if(tc.length){tc.forEach(c=>{
+      const t=c.match(T);const extra=tc.length===1?' | '+cells.filter(x=>x!==c).join(' | '):'';
+      const[s,e]=rng(t);const r=mk(c.replace(T,' ')+extra,day,s,e);if(r)out.push(r);
+    })}else{
+      const m=[...line.matchAll(TS)];
+      if(m.length===2){const r=mk(line.replace(TS,' '),day,tp(m[0]),tp(m[1]));if(r)out.push(r)}
+    }
+  });
+  return out;
+}
+function roomFmt(s){s=s.replace(/\bBlock\s*-?\s*/gi,'').replace(/\s+/g,' ').trim();const k=s.search(/\b(Lecture|Computer|LH|Lab|Room|Studio|Seminar|Class|Hall)/i);if(k<=0)return s;const pre=s.slice(0,k).replace(/\s+/g,'').replace(/-(?!\d)/g,''),c=(pre.match(/\d?[A-Z]{1,2}\d{3}(?:-\d)?$/)||[])[0];return c?s.slice(k)+' ('+c+')':s}
+function erpParse(items,prev){
+  items=items.map(i=>({...i,cx:(i.x+i.xe)/2}));
+  const hd=items.find(i=>/^day$/i.test(i.s));
+  let cols=prev;
+  if(hd){
+    const hs=items.filter(i=>Math.abs(i.y-hd.y)<=9).sort((a,b)=>b.y-a.y||a.x-b.x),m=[];
+    hs.forEach(i=>{const l=m[m.length-1];if(l&&Math.abs(l.y-i.y)<2&&i.x-l.xe<=2){l.s+=i.s;l.xe=i.xe}else m.push({...i})});
+    m.forEach(i=>i.cx=(i.x+i.xe)/2);m.sort((a,b)=>a.cx-b.cx);
+    const g=[];
+    m.forEach(i=>{const l=g[g.length-1];if(l&&(Math.abs(i.cx-l.cx)<=14||Math.abs(i.x-l.x)<=4)){l.m.push(i);l.x=Math.min(l.x,i.x);l.cx=l.m.reduce((s,k)=>s+k.cx,0)/l.m.length}else g.push({cx:i.cx,x:i.x,m:[i]})});
+    const R=[[/^day$/i,'day'],[/^time$/i,'time'],[/resource/i,'res'],[/instruct/i,'ins'],[/coordinator/i,'coord'],[/title/i,'title'],[/^component$/i,'comp']];
+    cols=g.map(k=>{let t='x';for(const r of R)if(k.m.some(i=>r[0].test(i.s))){t=r[1];break}return{cx:k.cx,t}});
+  }
+  if(!cols||!cols.some(c=>c.t==='time')||!cols.some(c=>c.t==='title'))return{rows:[],cols};
+  const colOf=i=>cols.reduce((b,c)=>Math.abs(c.cx-(i.x+i.xe)/2)<Math.abs(b.cx-(i.x+i.xe)/2)?c:b).t;
+  const raw=(hd?items.filter(i=>i.y<hd.y-12):items).sort((a,b)=>Math.round(b.y/2)-Math.round(a.y/2)||a.x-b.x),body=[];
+  raw.forEach(i=>{const p=body[body.length-1];
+    if(p&&Math.abs(p.y-i.y)<3&&i.x-p.xe<=3&&i.x>=p.x-1){p.s+=(i.x-p.xe<=0.5?'':' ')+i.s;p.xe=Math.max(p.xe,i.xe)}else body.push({...i})});
+  body.forEach(i=>i.t=colOf(i));
+  const tI=body.filter(i=>(i.t==='time'||i.t==='day')&&/\d[:.]\d\d|^to\d/i.test(i.s)).sort((a,b)=>b.y-a.y),tg=[];
+  tI.forEach(i=>{const l=tg[tg.length-1];if(l&&Math.abs(l.y-i.y)<=3)l.m.push(i);else tg.push({y:i.y,m:[i]})});
+  const anchors=[];
+  tg.forEach(a=>{
+    const txt=a.m.sort((p,q)=>p.x-q.x).map(i=>i.s).join(' ');const t=txt.match(T);if(!t)return;
+    const ds=body.filter(k=>k.t==='day'&&Math.abs(k.y-a.y)<=3).map(k=>k.s).join(' ');
+    anchors.push({y:a.y,day:dayOf(ds),t,f:{}});
+  });
+  if(!anchors.length)return{rows:[],cols};
+  ['title','res','ins','comp'].forEach(ft=>{
+    const its=body.filter(i=>i.t===ft).sort((a,b)=>b.y-a.y),bnd=[Infinity];
+    for(let k=0;k<anchors.length-1;k++){
+      const A=anchors[k].y,B=anchors[k+1].y;let b=(A+B)/2,best=0;
+      const r=its.filter(i=>i.y<=A+30&&i.y>=B-30);
+      for(let j=0;j<r.length-1;j++){const gp=r[j].y-r[j+1].y,mid=(r[j].y+r[j+1].y)/2;if(gp>best&&mid<A&&mid>B){best=gp;b=mid}}
+      bnd.push(b);
+    }
+    bnd.push(-Infinity);
+    its.forEach(i=>{let k=0;while(k<anchors.length-1&&i.y<bnd[k+1])k++;(anchors[k].f[ft]=anchors[k].f[ft]||[]).push(i)});
+  });
+  const txt=(a,k)=>(a.f[k]||[]).sort((p,q)=>q.y-p.y||p.x-q.x).map(i=>i.s).join(' ').replace(/\s+/g,' ').trim();
+  const rows=[];
+  anchors.forEach(a=>{
+    const[s,e]=rng(a.t);let sub=txt(a,'title');if(!a.day||!sub||!s||!e)return;
+    const c=txt(a,'comp');sub+=/practical/i.test(c)?' (Practical)':/studio/i.test(c)?' (Studio)':'';
+    rows.push({day:a.day,subject:sub,teacher:txt(a,'ins'),room:roomFmt(txt(a,'res')),start:s,end:e});
+  });
+  return{rows,cols};
+}
+const uniq=a=>{const s=new Set();return a.filter(r=>{const k=[r.day,r.start,r.end,r.subject].join('#');if(s.has(k))return false;s.add(k);return true})};
+async function extract(file){
+  S.raw=null;
+  if(file.type!=='application/pdf'&&!/\.pdf$/i.test(file.name))throw'Please choose a PDF file.';
+  let pdf;try{pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise}catch(e){throw'This file could not be read. It may be damaged or not a real PDF.'}
+  const lines=[];let grid=[],er=[],ecols=null;
+  for(let p=1;p<=pdf.numPages;p++){
+    const tc=await(await pdf.getPage(p)).getTextContent();
+    const rows={},pageSegs=[],pageItems=[];
+    tc.items.forEach(it=>{if(!it.str.trim())return;const o={x:it.transform[4],xe:it.transform[4]+it.width,y:it.transform[5],s:it.str.trim()};pageItems.push(o);const y=Math.round(o.y/4);(rows[y]=rows[y]||[]).push(o)});
+    Object.keys(rows).sort((a,b)=>b-a).forEach(k=>{
+      const it=rows[k].slice().sort((a,b)=>a.x-b.x);const segs=[{...it[0]}];
+      for(let j=1;j<it.length;j++){const l=segs[segs.length-1];if(it[j].x-l.xe>14)segs.push({...it[j]});else{l.s+=' '+it[j].s;l.xe=it[j].xe}}
+      lines.push(segs.map(s=>s.s).join(' | '));pageSegs.push(...segs);
+    });
+    const r=erpParse(pageItems,ecols);ecols=r.cols;er=er.concat(r.rows);
+    grid=grid.concat(gridParse(pageSegs));
+  }
+  if(!lines.length)throw'This PDF looks empty or scanned as an image. Try a text-based PDF, or add classes manually.';
+  S.raw=lines.slice(0,60);
+  const r=uniq(er.length?er:grid.length?grid:parse(lines));
+  if(!r.length)throw"We couldn't detect a timetable in this PDF. The layout may be unsupported — you can add classes manually below.";
+  return r;
+}
+const bad=r=>({subject:!r.subject,teacher:!r.teacher,room:!r.room,end:!r.start||!r.end||tm(r.end)<=tm(r.start)});
+function draftHtml(){
+  const d=S.draft;
+  const uncertain=d.filter(r=>Object.values(bad(r)).some(Boolean)).length;
+  return`<h2>Preview & edit</h2><p class="mu" style="margin-bottom:8px">${uncertain?`${uncertain} class${uncertain>1?'es need':' needs'} a check — highlighted in orange.`:'Everything looks good. Fix anything that is wrong, then save.'}</p><div class="card tw"><table><tr><th>Day</th><th>Subject</th><th>Start</th><th>End</th><th>Teacher</th><th>Room</th><th></th></tr>${d.map((r,i)=>{const b=bad(r);return`<tr><td><select onchange="ed(${i},'day',this.value)">${DAYS.map(x=>`<option ${x===r.day?'selected':''}>${x}</option>`).join('')}</select></td><td><input class="${b.subject?'warn':''}" value="${esc(r.subject)}" oninput="ed(${i},'subject',this.value,1)"></td><td><input type="time" class="${b.end?'warn':''}" value="${r.start}" onchange="ed(${i},'start',this.value)"></td><td><input type="time" class="${b.end?'warn':''}" value="${r.end}" onchange="ed(${i},'end',this.value)"></td><td><input class="${b.teacher?'warn':''}" value="${esc(r.teacher)}" oninput="ed(${i},'teacher',this.value,1)"></td><td><input class="${b.room?'warn':''}" value="${esc(r.room)}" oninput="ed(${i},'room',this.value,1)"></td><td><button class="btn" style="padding:8px 12px" onclick="S.draft.splice(${i},1);render()">✕</button></td></tr>`}).join('')}</table></div><div class="sw"><button class="btn" onclick="S.draft.push({day:'Monday',subject:'',teacher:'',room:'',start:'09:00',end:'10:00'});render()">+ Add class</button><button class="btn pri" onclick="saveDraft()">Save Timetable</button></div>`;
+}
+function ed(i,k,v,quiet){S.draft[i][k]=v;if(!quiet)render()}
+function saveDraft(){
+  const ok=S.draft.filter(r=>r.subject.trim()&&r.start&&r.end&&tm(r.end)>tm(r.start));
+  if(!ok.length){S.msg=['err','Add at least one class with a subject and valid times before saving.'];return render()}
+  const seen=new Set();S.rows=ok.filter(r=>{const k=[r.day,r.start,r.end,r.subject].join('#');if(seen.has(k))return false;seen.add(k);return true});
+  save();S.draft=null;S.msg=null;go('dash');
+}
+async function handleFile(file){
+  if(!file)return;
+  S.draft=null;S.msg=['ok','Processing timetable...'];render();
+  try{S.draft=await extract(file);S.msg=['ok','Timetable successfully extracted!']}
+  catch(e){S.draft=typeof e==='string'?[]:null;S.msg=['err',typeof e==='string'?e:'Something went wrong while reading the file. Please try again.']}
+  render();
+}
+function sample(){
+  const r=(day,s,e,subject,teacher,room)=>({day,start:s,end:e,subject,teacher,room});
+  S.rows=[];
+  const A=[['09:00','10:00','Mathematics','Dr. Sharma','A-102'],['10:00','11:00','Data Structures','Prof. Kumar','B-204'],['11:00','12:00','Computer Networks','Prof. Singh','Lab 2'],['13:00','14:00','Operating Systems','Prof. Verma','Lab 3']];
+  DAYS.forEach((d,i)=>A.forEach((a,j)=>{if((i+j)%5!==4)S.rows.push(r(d,...a))}));
+  save();go('dash');
+}
+
+/* ---------- shell ---------- */
+function go(v){S.view=v;if(v!=='upload')S.msg=null;render();window.scrollTo(0,0)}
+function render(){
+  $('#nav').innerHTML=`<div class="logo">Smart <b>Timetable</b></div>`+NAV.map(n=>`<button class="${S.view===n[0]?'on':''}" onclick="go('${n[0]}')"><span>${n[2]}</span>${n[1]}</button>`).join('');
+  $('#main').innerHTML=V[S.view]();
+  if(S.view==='upload'){
+    const d=$('#drop'),fi=$('#file');
+    fi.onchange=()=>handleFile(fi.files[0]);
+    d.ondragover=e=>{e.preventDefault();d.classList.add('over')};d.ondragleave=()=>d.classList.remove('over');
+    d.ondrop=e=>{e.preventDefault();d.classList.remove('over');handleFile(e.dataTransfer.files[0])};
+  }
+}
+let lastKey='';
+setInterval(()=>{
+  if(S.view!=='dash'&&S.view!=='today')return;
+  const{i,sec}=nowI();const l=i<6?byDay(DAYS[i]):[];
+  const key=l.map(c=>status(c,sec)).join('')+i;
+  if(key!==lastKey){lastKey=key;render();return}
+  const n=nextClass();const a=$('#cdnext');if(a&&n)a.textContent=hms(n.secs);
+  const live=l.find(c=>status(c,sec)==='live');const b=$('#cdlive');if(b&&live)b.textContent=hms(tm(live.end)*60-sec);
+},1000);
+render();
+</script>
+</body>
+</html>
