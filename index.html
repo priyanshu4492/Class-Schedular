@@ -58,6 +58,7 @@ pre{white-space:pre-wrap;font-size:12px;color:var(--mu);overflow-x:auto;margin:1
 .opt{display:flex;gap:10px;align-items:center;font-weight:600;cursor:pointer;margin:8px 0}.opt input{width:auto;box-shadow:none}
 .fld{display:grid;grid-template-columns:1fr 1fr;gap:10px}.fld label{font-size:12px;color:var(--mu);font-weight:700;display:block;margin-bottom:4px}
 .bp{color:var(--ok)}.bn{color:var(--bad)}
+#tt{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));right:14px;z-index:10;padding:9px 12px;border-radius:50%;background:var(--bg);font-size:16px;line-height:1}
 @media (max-width:800px){
 .app{display:block}
 nav{position:fixed;bottom:0;left:0;right:0;top:auto;height:auto;flex-direction:row;justify-content:space-around;padding:8px 6px calc(8px + env(safe-area-inset-bottom,0px));background:var(--bg);z-index:9;box-shadow:0 -6px 14px var(--sd);gap:0}
@@ -67,13 +68,17 @@ main{padding-bottom:110px}}
 </style>
 </head>
 <body>
+<button id="tt" class="btn" onclick="setTheme(isDark()?'light':'dark')"></button>
 <div class="app"><nav id="nav"></nav><main id="main"></main></div>
 <script>
 const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const NAV=[['dash','Dashboard','🏠'],['today','Today','📅'],['week','Weekly','🗓️'],['att','Attendance','✅'],['search','Search','🔍'],['upload','Upload PDF','📄'],['set','Settings','⚙️']];
-let S={rows:[],att:{},fmt24:false,view:'dash',day:null,draft:null,msg:null,ae:null,aerr:null};
-try{const d=JSON.parse(localStorage.getItem('st_v1')||'null');if(d){S.rows=d.rows||[];S.att=d.att||{};S.fmt24=!!d.fmt24}}catch(e){}
-const save=()=>{try{localStorage.setItem('st_v1',JSON.stringify({rows:S.rows,att:S.att,fmt24:S.fmt24}))}catch(e){}};
+let S={rows:[],att:{},fmt24:false,theme:'auto',view:'dash',day:null,draft:null,msg:null,ae:null,aerr:null,ev:null,everr:null,cf:null};
+try{const d=JSON.parse(localStorage.getItem('st_v1')||'null');if(d){S.rows=d.rows||[];S.att=d.att||{};S.fmt24=!!d.fmt24;S.theme=d.theme||'auto'}}catch(e){}
+const save=()=>{try{localStorage.setItem('st_v1',JSON.stringify({rows:S.rows,att:S.att,fmt24:S.fmt24,theme:S.theme}))}catch(e){}};
+const isDark=()=>S.theme==='dark'||(S.theme==='auto'&&matchMedia('(prefers-color-scheme:dark)').matches);
+function applyTheme(){const r=document.documentElement;S.theme==='auto'?r.removeAttribute('data-theme'):r.setAttribute('data-theme',S.theme);const b=document.getElementById('tt');if(b){b.textContent=isDark()?'☀️':'🌙';b.setAttribute('aria-label',isDark()?'Switch to light mode':'Switch to dark mode')}}
+function setTheme(t){S.theme=t;save();applyTheme();if(S.view==='set')render()}
 const pad=n=>String(n).padStart(2,'0');
 const tm=t=>{const[a,b]=t.split(':').map(Number);return a*60+b};
 const f=t=>{if(S.fmt24)return t;const[h,m]=t.split(':').map(Number);return(h%12||12)+':'+pad(m)+' '+(h<12?'AM':'PM')};
@@ -142,23 +147,50 @@ function attInfo(a){
       else{const n=Math.ceil((TARGET/100*a.held-a.present)/(1-TARGET/100)-1e-9);h+=`<p class="meta">📌 Attend next <b>${n}</b> class${n===1?'':'es'} in a row to reach ${TARGET}%${n>rem?' (more than the '+rem+' remaining)':''}</p>`}
     }else h+=`<p class="meta">No sessions held yet.</p>`;
   }else{
-    h+=`<p class="tag">${est?'Estimated · started from manual %':'Manual starting %'}</p><p class="meta">Started at ${r1(a.init)}% · tracked since: ${a.tp}/${a.tp+a.ta}</p><p class="meta">ℹ️ Add detailed attendance data to calculate how many classes you can bunk.</p>`;
+    h+=`<p class="tag">${est?'Estimated · started from manual %':'Manual starting %'}</p><p class="meta">Started at ${r1(a.init)}% · tracked since: ${a.tp}/${a.tp+a.ta}</p>${pctBunk(a)}<p class="meta">ℹ️ Approximate. Add detailed attendance data for an exact count.</p>`;
   }
   return h;
 }
+function pctBunk(a){
+  const n=a.tp+a.ta,att=a.init/100*BASE_W+a.tp,tot=BASE_W+n,pct=att/tot*100;
+  if(pct>=TARGET){const b=Math.max(0,Math.floor(att/(TARGET/100)-tot+1e-9));return`<p class="meta">🛋 You can bunk about <b>${b}</b> more class${b===1?'':'es'} and stay ≥ ${TARGET}%</p>`}
+  const k=Math.ceil((TARGET/100*tot-att)/(1-TARGET/100)-1e-9);return`<p class="meta">📌 Attend about <b>${k}</b> class${k===1?'':'es'} in a row to reach ${TARGET}%</p>`;
+}
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())};
+const fd=s=>new Date(s+'T00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
+const sm='padding:5px 10px';
+function evHtml(a,i,mini){
+  const rs=(a.rs||[]).map((r,j)=>({r,j})).sort((x,y)=>x.r.to<y.r.to?-1:1),cx=a.cx||[];
+  if(mini)return rs.length?`<p class="meta">🔁 ${rs.length} rescheduled · next ${fd(rs[0].r.to)}</p>`:'';
+  let h='';
+  if(rs.length)h+=`<div style="margin-top:6px"><p class="tag">Rescheduled classes</p>${rs.map(x=>`<div class="row" style="margin-top:6px;font-size:13px"><span>🔁 <b>${fd(x.r.to)}</b> <span class="mu">(was ${fd(x.r.from)})</span>${x.r.to<=today()?' <b class="bn">due</b>':''}</span><span><button class="btn" style="${sm}" title="Attended" onclick="rsDone(${i},${x.j},1)">✔</button> <button class="btn" style="${sm}" title="Missed" onclick="rsDone(${i},${x.j},0)">✖</button> <button class="btn" style="${sm}" title="Remove" onclick="evDel(${i},'rs',${x.j})">🗑</button></span></div>`).join('')}</div>`;
+  if(cx.length)h+=`<div style="margin-top:6px"><p class="tag">Cancelled (not counted)</p>${cx.slice(-5).map((c,k)=>{const j=cx.length-Math.min(5,cx.length)+k;return`<div class="row" style="margin-top:6px;font-size:13px"><span>🚫 ${fd(c.date)}</span><button class="btn" style="${sm}" title="Remove" onclick="evDel(${i},'cx',${j})">🗑</button></div>`}).join('')}</div>`;
+  if(S.ev&&S.ev.i===i){const rsm=S.ev.t==='rs';h+=`<div class="card inset" style="margin-top:10px;padding:14px"><p class="tag">${rsm?'Reschedule a class':'Cancelled class'}</p><label class="meta" for="ev-d" style="display:block;margin-top:8px">${rsm?'Original class date':'Class date'}</label><input type="date" id="ev-d" value="${today()}">${rsm?`<label class="meta" for="ev-n" style="display:block;margin-top:8px">New scheduled date</label><input type="date" id="ev-n">`:''}<p class="meta" style="margin-top:8px">${rsm?'It will show here until you mark it Present or Absent.':'A cancelled class does not count as held, present or absent.'}</p>${S.everr?`<div class="msg err" style="margin-top:8px">${esc(S.everr)}</div>`:''}<div class="sw"><button class="btn pri" onclick="evSave()">Save</button><button class="btn" onclick="S.ev=null;S.everr=null;render()">Cancel</button></div></div>`}
+  return h;
+}
+function evOpen(i,t){S.ev={i,t};S.everr=null;render()}
+function evSave(){
+  const{i,t}=S.ev,a=S.att[subs()[i]],d=$('#ev-d').value,n=t==='rs'?$('#ev-n').value:'',e=m=>{S.everr=m;render()};
+  if(!d)return e('Pick the class date.');
+  if(t==='rs'){if(!n)return e('Pick the new date.');if(n<d)return e('The new date must be on or after the original date.');(a.rs=a.rs||[]).push({from:d,to:n})}
+  else(a.cx=a.cx||[]).push({date:d});
+  S.ev=null;S.everr=null;save();render();
+}
+function evDel(i,t,j){const a=S.att[subs()[i]];a[t].splice(j,1);save();render()}
+function rsDone(i,j,p){const a=S.att[subs()[i]];a.rs.splice(j,1);mark(i,p)}
 function attCard(s,i,mini){
   const a=S.att[s],h=`<h3>${esc(s)}</h3>`;
   if(!mini&&S.ae===s)return`<div class="card cls">${h}${attForm(s,a)}</div>`;
   if(!a)return`<div class="card cls">${h}<p class="meta">Attendance not set up yet.</p><div><button class="btn pri" onclick="S.ae=subs()[${i}];S.aerr=null;go('att')">Set Attendance</button></div></div>`;
-  const acts=mini?'':`<div class="sw" style="margin-top:6px"><button class="btn" onclick="mark(${i},1)">✔ Present</button><button class="btn" onclick="mark(${i},0)">✖ Absent</button>${a.prev?`<button class="btn" onclick="undo(${i})">↩ Undo</button>`:''}<button class="btn" onclick="S.ae=subs()[${i}];S.aerr=null;render()">Edit Attendance</button></div>`;
-  return`<div class="card cls">${h}<div class="ar">${ring(calc(a).pct)}<div>${attInfo(a)}</div></div>${acts}</div>`;
+  const acts=mini?'':`<div class="sw" style="margin-top:6px"><button class="btn" onclick="mark(${i},1)">✔ Present</button><button class="btn" onclick="mark(${i},0)">✖ Absent</button>${a.prev?`<button class="btn" onclick="undo(${i})">↩ Undo</button>`:''}<button class="btn" onclick="evOpen(${i},'cx')">🚫 Cancelled</button><button class="btn" onclick="evOpen(${i},'rs')">🔁 Rescheduled</button><button class="btn" onclick="S.ae=subs()[${i}];S.aerr=null;render()">Edit Attendance</button></div>`;
+  return`<div class="card cls">${h}<div class="ar">${ring(calc(a).pct)}<div>${attInfo(a)}</div></div>${evHtml(a,i,mini)}${acts}</div>`;
 }
 function attForm(s,a){
   const d=a&&a.mode==='detailed',m=a&&a.mode==='percentage',v=x=>a&&a[x]!=null?a[x]:'';
   return`<p class="tag" style="margin-top:8px">Set Attendance</p>
 <label class="opt"><input type="radio" name="am" value="detailed" ${m?'':'checked'} onchange="amode()"> Enter detailed attendance</label>
 <label class="opt"><input type="radio" name="am" value="percentage" ${m?'checked':''} onchange="amode()"> Enter current percentage</label>
-<div id="a-det" class="fld" style="${m?'display:none':''}"><div><label>Total Scheduled Classes</label><input type="number" min="0" id="a-t" value="${d?v('total'):''}"></div><div><label>Sessions Held Till Now</label><input type="number" min="0" id="a-h" value="${d?v('held'):''}"></div><div><label>Present</label><input type="number" min="0" id="a-p" value="${d?v('present'):''}"></div><div><label>Absent</label><input type="number" min="0" id="a-a" value="${d?v('absent'):''}"></div></div>
+<div id="a-det" class="fld" style="${m?'display:none':''}"><div><label>Total Scheduled Classes</label><input type="number" min="0" id="a-t" value="${d?v('total'):''}"></div><div><label>Sessions Held Till Now</label><input type="number" min="0" id="a-h" value="${d?v('held'):''}"></div><div><label>Present</label><input type="number" min="0" id="a-p" value="${d?v('present'):''}"></div><div><label>Absent</label><input type="number" min="0" id="a-a" value="${d?v('absent'):''}"></div><p class="meta" style="grid-column:1/-1">Percentage = Present ÷ Sessions Held, same as your college portal. Absent can be lower than the rest (e.g. leave or unmarked sessions).</p></div>
 <div id="a-pct" style="${m?'':'display:none'}"><label class="meta" for="a-i">Current Attendance (initial percentage)</label><div class="row" style="justify-content:flex-start;margin-top:6px"><input type="number" min="0" max="100" step="0.1" id="a-i" style="width:110px" value="${m?v('init'):''}"> <b>%</b></div><p class="meta" style="margin-top:8px">This is your starting point. Future present/absent marks are tracked from here on; no past class counts are made up.</p></div>
 ${S.aerr?`<div class="msg err" style="margin-top:10px">${esc(S.aerr)}</div>`:''}
 <div class="sw"><button class="btn pri" onclick="saveAtt()">Save Attendance</button><button class="btn" onclick="S.ae=null;S.aerr=null;render()">Cancel</button></div>`;
@@ -168,7 +200,7 @@ function saveAtt(){
   const s=S.ae,mode=document.querySelector('input[name=am]:checked').value,e=m=>{S.aerr=m;render()};
   if(mode==='percentage'){
     const v=parseFloat($('#a-i').value);if(isNaN(v)||v<0||v>100)return e('Enter a percentage between 0 and 100.');
-    S.att[s]={mode:'percentage',init:v,tp:0,ta:0};
+    S.att[s]={mode:'percentage',init:v,tp:0,ta:0,cx:(S.att[s]||{}).cx||[],rs:(S.att[s]||{}).rs||[]};
   }else{
     const n=id=>$(id).value===''?NaN:parseInt($(id).value,10);
     const T=n('#a-t'),H=n('#a-h'),P=n('#a-p');let A=n('#a-a');
@@ -176,8 +208,9 @@ function saveAtt(){
     if(isNaN(A))A=H-P;
     if([T,H,P,A].some(x=>x<0))return e('Numbers cannot be negative.');
     if(H>T)return e('Sessions Held cannot be more than Total Scheduled.');
-    if(P+A!==H)return e('Present + Absent must equal Sessions Held ('+H+').');
-    S.att[s]={mode:'detailed',total:T,held:H,present:P,absent:A};
+    if(P>H)return e('Present cannot be more than Sessions Held ('+H+').');
+    if(P+A>H)return e('Present + Absent cannot be more than Sessions Held ('+H+').');
+    S.att[s]={mode:'detailed',total:T,held:H,present:P,absent:A,cx:(S.att[s]||{}).cx||[],rs:(S.att[s]||{}).rs||[]};
   }
   save();S.ae=null;S.aerr=null;render();
 }
@@ -206,9 +239,17 @@ search(){return`<h1>Search</h1><p class="mu" style="margin-bottom:18px">Subject,
 upload(){return`<h1>Upload PDF</h1><p class="mu" style="margin-bottom:18px">Upload once — we'll keep your timetable saved.</p>
 <div class="card inset drop" id="drop" onclick="$('#file').click()"><div class="big">📄</div><h3 style="margin-top:8px">Upload Your Timetable PDF</h3><p class="mu" style="margin-top:6px">Drag & drop your timetable here or browse files</p><input type="file" id="file" accept="application/pdf" hidden></div>
 ${S.msg?`<div class="msg ${S.msg[0]}">${S.msg[1]}</div>`:''}${S.msg&&S.msg[0]==='err'&&S.raw?`<details class="card" style="margin-top:16px"><summary style="cursor:pointer;font-weight:700">See what we read from your PDF</summary><pre>${esc(S.raw.join('\n'))}</pre></details>`:''}${S.draft?draftHtml():''}`},
-set(){return`<h1>Settings</h1><div class="grid" style="margin-top:20px;max-width:520px"><div class="card row"><div><h3>24-hour time</h3><p class="meta">Show 14:00 instead of 2:00 PM</p></div><button class="btn" onclick="S.fmt24=!S.fmt24;save();render()">${S.fmt24?'On':'Off'}</button></div><div class="card row"><div><h3>Saved timetable</h3><p class="meta">${S.rows.length} classes stored on this device</p></div><button class="btn" onclick="if(confirm('Delete your saved timetable?')){S.rows=[];save();render()}">Clear</button></div><div class="card row"><div><h3>Attendance data</h3><p class="meta">${Object.keys(S.att).length} subjects tracked</p></div><button class="btn" onclick="if(confirm('Delete all attendance data?')){S.att={};S.ae=null;save();render()}">Clear</button></div></div>`}
+set(){return`<h1>Settings</h1><div class="grid" style="margin-top:20px;max-width:520px"><div class="card"><h3>Appearance</h3><p class="meta" style="margin-bottom:12px">Choose light, dark or follow your device</p><div class="sw" style="margin:0">${[['auto','Auto'],['light','☀️ Light'],['dark','🌙 Dark']].map(t=>`<button class="btn ${S.theme===t[0]?'pri':''}" onclick="setTheme('${t[0]}')">${t[1]}</button>`).join('')}</div></div><div class="card row"><div><h3>24-hour time</h3><p class="meta">Show 14:00 instead of 2:00 PM</p></div><button class="btn" onclick="S.fmt24=!S.fmt24;save();render()">${S.fmt24?'On':'Off'}</button></div><div class="card row"><div><h3>Saved timetable</h3><p class="meta">${S.rows.length} classes stored on this device</p></div><button class="btn ${S.cf==='tt'?'pri':''}" onclick="clr('tt')">${S.cf==='tt'?'Tap again to confirm':'Clear'}</button></div><div class="card row"><div><h3>Attendance data</h3><p class="meta">${Object.keys(S.att).length} subjects tracked</p></div><button class="btn ${S.cf==='att'?'pri':''}" onclick="clr('att')">${S.cf==='att'?'Tap again to confirm':'Clear'}</button></div></div>`}
 };
 const $=s=>document.querySelector(s);
+let cfT;
+function clr(k){
+  clearTimeout(cfT);
+  if(S.cf!==k){S.cf=k;cfT=setTimeout(()=>{S.cf=null;if(S.view==='set')render()},4000);return render()}
+  S.cf=null;
+  if(k==='tt'){S.rows=[];S.day=null}else{S.att={};S.ae=null;S.ev=null}
+  save();render();
+}
 
 function doSearch(v){
   const q=v.trim().toLowerCase();const r=$('#res');
@@ -283,7 +324,7 @@ function parse(lines){
   });
   return out;
 }
-function roomFmt(s){s=s.replace(/\bBlock\s*-?\s*/gi,'').replace(/\s+/g,' ').trim();const k=s.search(/\b(Lecture|Computer|LH|Lab|Room|Studio|Seminar|Class|Hall)/i);if(k<=0)return s;const pre=s.slice(0,k).replace(/\s+/g,'').replace(/-(?!\d)/g,''),c=(pre.match(/\d?[A-Z]{1,2}\d{3}(?:-\d)?$/)||[])[0];return c?s.slice(k)+' ('+c+')':s}
+function roomFmt(s){return s.replace(/\s+/g,' ').replace(/\s*-\s*/g,' - ').replace(/(\w) - (\d)/g,'$1-$2').trim()}
 function erpParse(items,prev){
   items=items.map(i=>({...i,cx:(i.x+i.xe)/2}));
   const hd=items.find(i=>/^day$/i.test(i.s));
@@ -385,7 +426,7 @@ function sample(){
 }
 
 /* ---------- shell ---------- */
-function go(v){S.view=v;if(v!=='upload')S.msg=null;if(v!=='att')S.ae=null;render();window.scrollTo(0,0)}
+function go(v){S.view=v;S.cf=null;if(v!=='upload')S.msg=null;if(v!=='att'){S.ae=null;S.ev=null}render();window.scrollTo(0,0)}
 function render(){
   $('#nav').innerHTML=`<div class="logo">Smart <b>Timetable</b></div>`+NAV.map(n=>`<button class="${S.view===n[0]?'on':''}" onclick="go('${n[0]}')"><span>${n[2]}</span>${n[1]}</button>`).join('');
   $('#main').innerHTML=V[S.view]();
@@ -405,7 +446,8 @@ setInterval(()=>{
   const n=nextClass();const a=$('#cdnext');if(a&&n)a.textContent=hms(n.secs);
   const live=l.find(c=>status(c,sec)==='live');const b=$('#cdlive');if(b&&live)b.textContent=hms(tm(live.end)*60-sec);
 },1000);
-render();
+matchMedia('(prefers-color-scheme:dark)').addEventListener('change',applyTheme);
+applyTheme();render();
 </script>
 </body>
 </html>
